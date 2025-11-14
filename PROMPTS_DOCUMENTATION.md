@@ -292,3 +292,128 @@ Extract structured data from the provided content
 
 ---
 
+## AI Provider Integrations
+
+These are provider-specific integrations for commercial AI services.
+
+### 7. OpenAI - Ask ChatGPT
+
+**Location:** `packages/pieces/community/openai/src/lib/actions/send-prompt.ts:113-115`
+
+**Purpose:** Direct integration with OpenAI's ChatGPT models for conversational AI. Supports conversation memory, role-based instructions, and fine-tuned control over response generation parameters.
+
+**Default System Prompt:**
+```json
+[
+  { "role": "system", "content": "You are a helpful assistant." }
+]
+```
+
+**Features:**
+- Multi-turn conversation with persistent memory (via memory key)
+- Automatic token management and history trimming (90% of 32K token limit)
+- Role-based message system (system/user/assistant)
+- Full parameter control (temperature, top_p, frequency_penalty, presence_penalty)
+- Dynamic model selection from user's available models
+
+**Message Structure:**
+```typescript
+messages: [
+  ...roles,              // System/user/assistant role definitions
+  ...messageHistory      // Previous conversation if memory key is set
+]
+```
+
+**Parameters:**
+- `model` - GPT model selection (Dropdown, Default: "gpt-3.5-turbo")
+- `prompt` - User question (Long Text, Required)
+- `temperature` - Randomness 0-1 (Number, Default: 1)
+- `maxTokens` - Maximum completion tokens (Number, Default: 2048)
+- `topP` - Nucleus sampling parameter (Number, Default: 1)
+- `frequencyPenalty` - Repetition penalty -2.0 to 2.0 (Number, Default: 0)
+- `presencePenalty` - Topic diversity penalty -2.0 to 2.0 (Number, Optional)
+- `memoryKey` - Conversation persistence key (Short Text, Optional, Max: 128 chars)
+- `roles` - System/user/assistant instructions (JSON Array, Default: see above)
+
+**Memory Management:**
+- Stores conversation history in project scope
+- Automatically reduces context size when approaching token limits
+- Preserves conversation flow across multiple runs
+
+**Usage Example:**
+```typescript
+{
+  model: "gpt-4o",
+  prompt: "Explain quantum entanglement",
+  roles: [
+    { role: "system", content: "You are a physics professor." },
+    { role: "user", content: "I'm a beginner in physics." }
+  ],
+  memoryKey: "physics-tutorial-session",
+  temperature: 0.7,
+  maxTokens: 1500
+}
+```
+
+---
+
+### 8. OpenAI - Vision Prompt
+
+**Location:** `packages/pieces/community/openai/src/lib/actions/vision-prompt.ts:91-93`
+
+**Purpose:** Analyze images using OpenAI's GPT-4o vision capabilities. Allows users to ask questions about image content, extract information from visual data, or describe what's in an image.
+
+**Default System Prompt:**
+```json
+[
+  { "role": "system", "content": "You are a helpful assistant." }
+]
+```
+
+**Features:**
+- GPT-4o model (fixed) for vision analysis
+- Multi-modal message with text + image
+- Configurable detail level (low/high/auto) for image processing
+- Base64 image encoding support
+- Full parameter control like text completions
+
+**Message Structure:**
+```typescript
+messages: [
+  ...roles,
+  {
+    role: 'user',
+    content: [
+      { type: 'text', text: prompt },
+      { type: 'image_url', image_url: { url: 'data:image/...;base64,...' } }
+    ]
+  }
+]
+```
+
+**Parameters:**
+- `image` - Image file to analyze (File, Required)
+- `prompt` - Question about the image (Long Text, Required)
+- `detail` - Image processing detail level (Dropdown, Default: "auto", Options: low/high/auto)
+- `temperature` - Randomness 0-1 (Number, Default: 0.9)
+- `maxTokens` - Maximum response tokens (Number, Default: 2048)
+- `topP` - Nucleus sampling (Number, Default: 1)
+- `frequencyPenalty` - Repetition penalty (Number, Default: 0)
+- `presencePenalty` - Topic diversity penalty (Number, Default: 0.6)
+- `roles` - System instructions (JSON Array, Default: see above)
+
+**Usage Example:**
+```typescript
+{
+  image: uploadedImage,
+  prompt: "What objects are visible in this image? List them with their approximate locations.",
+  detail: "high",
+  temperature: 0.5,
+  roles: [
+    { role: "system", content: "You are an image analysis expert. Provide detailed, structured descriptions." }
+  ]
+}
+```
+
+---
+
