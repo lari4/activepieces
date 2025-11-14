@@ -417,3 +417,222 @@ messages: [
 
 ---
 
+### 9. Anthropic - Ask Claude
+
+**Location:** `packages/pieces/community/claude/src/lib/actions/send-prompt.ts:45`
+
+**Purpose:** Direct integration with Anthropic's Claude models for conversational AI and vision tasks. Supports extended thinking mode for complex reasoning, multi-modal inputs (text + images), and role-based conversations.
+
+**Default System Prompt:**
+```
+You're a helpful assistant.
+```
+
+**Features:**
+- Support for all Claude models (3, 3.5, 4, 4.5 Haiku/Sonnet/Opus)
+- Extended Thinking Mode using Claude 3.7 Sonnet for complex reasoning tasks
+- Multi-modal support (text + images via base64)
+- Role-based conversations (user/assistant only)
+- Automatic retry with exponential backoff on rate limits
+- Vision capabilities with MIME type detection
+
+**Extended Thinking Mode:**
+When enabled, uses Claude 3.7 Sonnet with a configurable "budget_tokens" parameter (default: 1024) for internal reasoning.
+
+**Message Structure:**
+```typescript
+messages: [
+  {
+    role: 'user',
+    content: [
+      { type: 'text', text: prompt },
+      // Optional image
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: 'image/jpeg',
+          data: base64Data
+        }
+      }
+    ]
+  },
+  ...roles  // Additional user/assistant messages
+]
+```
+
+**Parameters:**
+- `model` - Claude model selection (Dropdown, Default: "claude-3-haiku-20240307")
+- `systemPrompt` - System instructions (Long Text, Default: "You're a helpful assistant.")
+- `prompt` - User question (Long Text, Required)
+- `image` - Optional image for vision analysis (File, Optional)
+- `temperature` - Randomness 0-1 (Number, Default: 0.5)
+- `maxTokens` - Maximum response tokens (Number, Default: 1000)
+- `roles` - Additional user/assistant messages (JSON Array, Default: [])
+- `thinkingMode` - Enable extended reasoning (Checkbox, Default: false)
+- `budgetTokens` - Thinking mode token budget (Number, Default: 1024, only if thinking mode enabled)
+
+**Usage Example (Standard):**
+```typescript
+{
+  model: "claude-sonnet-4-5-20250929",
+  systemPrompt: "You are an expert data analyst.",
+  prompt: "Analyze the sales trends in this dataset.",
+  temperature: 0.3,
+  maxTokens: 2000
+}
+```
+
+**Usage Example (Thinking Mode):**
+```typescript
+{
+  model: "claude-3-7-sonnet-latest",
+  systemPrompt: "You are a mathematics problem solver.",
+  prompt: "Solve this complex calculus problem step by step: ...",
+  thinkingMode: true,
+  budgetTokens: 2048,  // More tokens for complex reasoning
+  maxTokens: 3000
+}
+```
+
+**Usage Example (Vision):**
+```typescript
+{
+  model: "claude-sonnet-4-5-20250929",
+  prompt: "What's in this medical scan image?",
+  image: xrayImage,
+  systemPrompt: "You are a medical imaging assistant.",
+  temperature: 0.2
+}
+```
+
+---
+
+### 10. Perplexity AI - Ask AI
+
+**Location:** `packages/pieces/community/perplexity-ai/src/lib/actions/create-chat-completion.action.ts:92-94`
+
+**Purpose:** Search-powered AI responses using Perplexity's Sonar models. Provides AI-generated answers with citations from web sources, making it ideal for research and fact-checking tasks.
+
+**Default System Prompt:**
+```json
+[
+  { "role": "system", "content": "You are a helpful assistant." }
+]
+```
+
+**Features:**
+- Search-grounded responses with citations
+- Sonar and Sonar Reasoning models
+- Role-based conversation system (system/user/assistant)
+- Returns both answer text and citations array
+- Full parameter control for response tuning
+
+**Available Models:**
+- `sonar-reasoning-pro` - Advanced reasoning with search
+- `sonar-reasoning` - Standard reasoning with search
+- `sonar-pro` - Premium search-powered model (default)
+- `sonar` - Standard search-powered model
+
+**Message Structure:**
+```typescript
+messages: [
+  ...roles,  // System/user/assistant role definitions
+  { role: 'user', content: prompt }
+]
+```
+
+**Parameters:**
+- `model` - Sonar model selection (Dropdown, Default: "sonar-pro")
+- `prompt` - User question (Long Text, Required)
+- `temperature` - Randomness 0-2 (Number, Default: 0.2)
+- `max_tokens` - Maximum response tokens (Number, Optional)
+- `top_p` - Nucleus sampling 0-1 (Number, Default: 0.9)
+- `presence_penalty` - Topic diversity -2.0 to 2.0 (Number, Default: 0)
+- `frequency_penalty` - Repetition penalty >0 (Number, Default: 1.0)
+- `roles` - System/user/assistant instructions (JSON Array, Default: see above)
+
+**Response Format:**
+```typescript
+{
+  result: "AI-generated answer text",
+  citations: [
+    "https://source1.com",
+    "https://source2.com",
+    ...
+  ]
+}
+```
+
+**Usage Example:**
+```typescript
+{
+  model: "sonar-reasoning-pro",
+  prompt: "What are the latest developments in quantum computing?",
+  temperature: 0.3,
+  roles: [
+    { role: "system", content: "You are a technology research assistant. Provide accurate, well-cited information." }
+  ]
+}
+// Returns: { result: "...", citations: ["https://..."] }
+```
+
+---
+
+### 11. LocalAI - Self-Hosted AI
+
+**Location:** `packages/pieces/community/localai/src/lib/actions/send-prompt.ts:115-117`
+
+**Purpose:** Integration with self-hosted LocalAI instances for privacy-focused AI deployments. Provides OpenAI-compatible API interface for local LLM models.
+
+**Default System Prompt:**
+```json
+[
+  { "role": "system", "content": "You are a helpful assistant." }
+]
+```
+
+**Features:**
+- Self-hosted, privacy-focused AI
+- OpenAI-compatible API
+- Dynamic model selection from LocalAI instance
+- Role-based conversation system
+- Automatic retry with exponential backoff
+- Full parameter control
+
+**Message Structure:**
+```typescript
+messages: [
+  ...roles,              // System/user/assistant role definitions
+  { role: 'user', content: prompt }
+]
+```
+
+**Parameters:**
+- `model` - Available local model (Dropdown, Default: "gpt-3.5-turbo")
+- `prompt` - User question (Long Text, Required)
+- `temperature` - Randomness (Number, Default: 0.9)
+- `maxTokens` - Maximum response tokens (Number, Default: 2048)
+- `topP` - Nucleus sampling (Number, Default: 1)
+- `frequencyPenalty` - Repetition penalty -2.0 to 2.0 (Number, Default: 0)
+- `presencePenalty` - Topic diversity -2.0 to 2.0 (Number, Default: 0.6)
+- `roles` - System/user/assistant instructions (JSON Array, Default: see above)
+
+**Configuration Required:**
+- LocalAI Base URL (configured in auth)
+- API Key (optional, configured in auth)
+
+**Usage Example:**
+```typescript
+{
+  model: "llama-2-7b-chat",  // Your locally deployed model
+  prompt: "Explain machine learning in simple terms",
+  temperature: 0.7,
+  roles: [
+    { role: "system", content: "You are an educational tutor." }
+  ]
+}
+```
+
+---
+
