@@ -483,3 +483,208 @@ User Schema → JSON Schema → Tool Definition → Messages → AI Tool Call �
 
 ---
 
+## Summary: Common Pipeline Patterns
+
+### 1. **Provider Proxy Pattern**
+All AI requests go through a unified proxy:
+
+```
+User Request → AI Provider Proxy ({apiUrl}v1/ai-providers/proxy/{provider})
+                        ↓
+            OpenAI / Anthropic / Google
+                        ↓
+            Usage tracking & cost calculation
+                        ↓
+                   Response
+```
+
+**Benefits:**
+- Centralized authentication
+- Usage metering and cost tracking
+- Provider-agnostic interface
+- Token/cost calculation middleware
+
+### 2. **Tool-Based Extraction Pattern**
+Used for structured outputs:
+
+```
+User Schema → Tool Definition → AI with toolChoice:'required' → Tool Call → Structured Data
+```
+
+**Used By:**
+- Extract Structured Data
+- Agent System (MCP tools)
+
+### 3. **Conversation Memory Pattern**
+Maintains multi-turn context:
+
+```
+Storage Key → Retrieve History → Append User Message → AI Generation → Append Response → Store History
+```
+
+**Used By:**
+- Ask AI (text-ai)
+- OpenAI ChatGPT (with memoryKey)
+
+### 4. **Prompt Template Pattern**
+Constructs specialized prompts:
+
+```
+Base Template + User Data → Formatted Prompt → AI Generation → Validation/Post-processing
+```
+
+**Used By:**
+- Text Classification (template with categories)
+- Summarization (template + text)
+- Agent System (directives + date + user prompt)
+
+### 5. **Multi-Modal Content Pattern**
+Handles text + images/PDFs:
+
+```
+User Content → Message with mixed content types → Vision-capable AI → Response
+              [text, image_url, file]
+```
+
+**Used By:**
+- OpenAI Vision
+- Claude (with image support)
+- Extract Structured Data
+- Eden AI
+
+### 6. **Streaming with Tool Calls Pattern**
+Real-time agent execution:
+
+```
+Stream Start → text-delta → tool-call → tool-result → text-delta → ... → Stream End
+                    ↓            ↓            ↓
+                Accumulate   Execute   Update Status
+```
+
+**Used By:**
+- Agent System (run-agent)
+
+---
+
+## Pipeline Comparison Table
+
+| Pipeline | Prompt Type | Tool Usage | Multi-Modal | Conversation | Validation |
+|----------|-------------|------------|-------------|--------------|------------|
+| Agent System | Template + Directives | Required (MCP) | No | No | Completion Check |
+| Text Classification | Template | No | No | No | Category Match |
+| Structured Extraction | User Guide | Required (extraction) | Yes | No | Schema Validation |
+| Ask AI | User Provided | Optional (web search) | No | Optional | None |
+| OpenAI ChatGPT | System + Roles | No | No | Optional | Token Limit |
+| OpenAI Vision | System + Roles | No | Yes | No | None |
+| Claude | System | No | Yes | No | None |
+| Eden AI | System + User | No | Optional | No | None |
+
+---
+
+## Data Flow Layers
+
+All AI operations in Activepieces flow through these layers:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 1: User Interface                                     │
+│  - Flow builder                                              │
+│  - Piece configuration                                       │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 2: Piece Actions (Community Pieces)                  │
+│  - agent/run-agent.ts                                        │
+│  - text-ai/ask-ai.ts                                         │
+│  - utility-ai/classify-text.ts                               │
+│  - openai/send-prompt.ts                                     │
+│  - etc.                                                       │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 3: Common AI SDK                                      │
+│  - packages/pieces/community/common-ai/src/lib/ai-sdk.ts    │
+│  - createAIModel() - Wraps provider instances               │
+│  - createWebSearchTool() - Search capability                │
+│  - SUPPORTED_AI_PROVIDERS - Provider registry               │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 4: AI SDK (@ai-sdk/*)                                │
+│  - @ai-sdk/openai                                            │
+│  - @ai-sdk/anthropic                                         │
+│  - @ai-sdk/google                                            │
+│  - Unified interface: generateText(), streamText()          │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 5: Provider Proxy Middleware                          │
+│  - packages/server/api/src/app/ai/ai-provider-service.ts   │
+│  - URL: {apiUrl}v1/ai-providers/proxy/{provider}           │
+│  - Adds authentication headers                              │
+│  - Tracks usage and costs                                   │
+│  - Calculates token usage                                   │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 6: AI Provider APIs                                   │
+│  - api.openai.com                                            │
+│  - api.anthropic.com                                         │
+│  - generativelanguage.googleapis.com                        │
+│  - etc.                                                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Response Flow (Back Up):
+
+```
+AI Provider Response
+    ↓
+Provider Proxy (add usage metadata)
+    ↓
+AI SDK (standardize response format)
+    ↓
+Common AI SDK (additional processing)
+    ↓
+Piece Action (format for user)
+    ↓
+Flow Execution Engine
+    ↓
+User Interface (display result)
+```
+
+---
+
+## Key Insights
+
+### 1. **Modular Architecture**
+- Each piece is independent
+- Common SDK provides shared functionality
+- Provider proxy centralizes AI access
+
+### 2. **Provider Flexibility**
+- Universal pieces work with any provider
+- Provider-specific pieces for advanced features
+- Eden AI aggregates multiple providers
+
+### 3. **Prompt Engineering Layers**
+- **System Level**: Agent directives, provider defaults
+- **Action Level**: Task-specific templates (classification, extraction)
+- **User Level**: Custom prompts and instructions
+
+### 4. **Tool Integration**
+- **Built-in Tools**: mark_as_complete
+- **MCP Tools**: External pieces and flows
+- **AI SDK Tools**: Web search, structured output
+
+### 5. **Data Validation**
+- **Input**: Schema validation, field name rules
+- **Output**: Category matching, schema compliance, completion checks
+
+---
+
