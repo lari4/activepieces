@@ -244,3 +244,242 @@ The autonomous agent pipeline for task completion with tool usage and MCP (Model
 
 ---
 
+## Pipeline 2: Text Classification Pipeline
+
+### Overview
+Classifies text into predefined categories using AI with strict validation.
+
+### Flow Diagram
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                       USER INPUT                              │
+│  - text: "I love this product! Best purchase ever!"         │
+│  - categories: ["Positive", "Negative", "Neutral"]          │
+│  - provider: "openai"                                        │
+│  - model: gpt-4o                                             │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│            STEP 1: Prompt Construction                        │
+│  Location: packages/pieces/community/utility-ai/src/lib/     │
+│            actions/classify-text.ts:49-52                     │
+│                                                               │
+│  Template:                                                    │
+│  ┌────────────────────────────────────────────────────┐     │
+│  │ As a text classifier, your task is to assign one   │     │
+│  │ of the following categories to the provided text:  │     │
+│  │ Positive, Negative, Neutral.                        │     │
+│  │ Please respond with only the selected category as  │     │
+│  │ a single word, and nothing else.                   │     │
+│  │                                                      │     │
+│  │ Text to classify: "I love this product! Best       │     │
+│  │ purchase ever!"                                     │     │
+│  └────────────────────────────────────────────────────┘     │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│            STEP 2: AI Provider Setup                          │
+│  Location: packages/pieces/community/utility-ai/              │
+│                                                               │
+│  baseURL = {apiUrl}v1/ai-providers/proxy/{provider}         │
+│  model = createAIModel({                                     │
+│    providerName: "openai",                                   │
+│    modelInstance: openai(gpt-4o),                           │
+│    engineToken: server.token,                               │
+│    baseURL,                                                  │
+│    metadata: {                                               │
+│      feature: AIUsageFeature.UTILITY_AI                     │
+│    }                                                         │
+│  })                                                          │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│            STEP 3: AI Generation                              │
+│                                                               │
+│  generateText({                                              │
+│    model,                                                    │
+│    prompt: [constructed prompt from Step 1]                 │
+│  })                                                          │
+│                                                               │
+│  AI Response: "Positive"                                     │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│            STEP 4: Validation                                 │
+│                                                               │
+│  result = response.text.trim()  // "Positive"               │
+│                                                               │
+│  IF result NOT IN categories:                                │
+│    THROW ERROR: "Unable to classify the text into the       │
+│                  provided categories."                       │
+│  ELSE:                                                        │
+│    RETURN result                                             │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    FINAL OUTPUT                               │
+│                                                               │
+│  "Positive"                                                   │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Data Transformations
+
+```
+Input Text → Classification Prompt → AI Model → Response Text → Validation → Category String
+```
+
+### Key Prompts in Pipeline
+
+- **Classification Instruction**: "As a text classifier, your task is to assign one of the following categories..."
+- **Constraint**: "Please respond with only the selected category as a single word, and nothing else."
+
+---
+
+## Pipeline 3: Structured Data Extraction Pipeline
+
+### Overview
+Extracts structured data from text, images, or PDFs using tool-based extraction with JSON Schema validation.
+
+### Flow Diagram
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                       USER INPUT                              │
+│  - text: "John Doe, age 35, john@example.com"               │
+│  - mode: "simple"                                            │
+│  - schema: {                                                 │
+│      fields: [                                               │
+│        { name: "name", type: "string", isRequired: true },  │
+│        { name: "age", type: "number" },                     │
+│        { name: "email", type: "string", isRequired: true }  │
+│      ]                                                       │
+│    }                                                         │
+│  - prompt: "Extract contact information"                    │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│            STEP 1: Schema Conversion                          │
+│  Location: packages/pieces/community/utility-ai/src/lib/     │
+│            actions/extract-structured-data.ts                 │
+│                                                               │
+│  IF mode === "simple":                                       │
+│    Convert fields array to JSON Schema:                     │
+│    {                                                          │
+│      type: "object",                                         │
+│      properties: {                                           │
+│        name: { type: "string" },                            │
+│        age: { type: "number" },                             │
+│        email: { type: "string" }                            │
+│      },                                                      │
+│      required: ["name", "email"]                            │
+│    }                                                         │
+│                                                               │
+│  IF mode === "advanced":                                     │
+│    Validate provided JSON Schema with AJV                   │
+│                                                               │
+│  schemaDefinition = jsonSchema(schema)                       │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│            STEP 2: Extraction Tool Definition                 │
+│                                                               │
+│  extractionTool = tool({                                     │
+│    description: "Extract structured data from the provided   │
+│                  content",                                   │
+│    inputSchema: schemaDefinition,  // From Step 1           │
+│    execute: async (data) => data  // Pass-through           │
+│  })                                                          │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│            STEP 3: Message Construction                       │
+│                                                               │
+│  messages = [                                                │
+│    {                                                          │
+│      role: 'user',                                           │
+│      content: [                                              │
+│        {                                                      │
+│          type: 'text',                                       │
+│          text: "Extract contact information\n\n             │
+│                 Text to analyze:\n                           │
+│                 John Doe, age 35, john@example.com"         │
+│        },                                                     │
+│        // Optional: image or PDF attachments                │
+│        {                                                      │
+│          type: 'image',                                      │
+│          image: 'data:image/jpeg;base64,...'                │
+│        }                                                      │
+│      ]                                                        │
+│    }                                                          │
+│  ]                                                           │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│            STEP 4: Tool-Based Generation                      │
+│                                                               │
+│  generateText({                                              │
+│    model,                                                    │
+│    maxOutputTokens: 2000,                                   │
+│    tools: {                                                  │
+│      extractData: extractionTool  // From Step 2            │
+│    },                                                        │
+│    toolChoice: 'required',  // Force tool usage             │
+│    messages  // From Step 3                                 │
+│  })                                                          │
+│                                                               │
+│  AI must call extractData tool with schema-compliant data   │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│            STEP 5: Tool Call Extraction                       │
+│                                                               │
+│  toolCalls = result.toolCalls                                │
+│                                                               │
+│  IF toolCalls is empty:                                      │
+│    THROW ERROR: "No structured data could be extracted"     │
+│                                                               │
+│  extractedData = toolCalls[0].input                          │
+└────────────────────────┬─────────────────────────────────────┘
+                         │
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    FINAL OUTPUT                               │
+│                                                               │
+│  {                                                            │
+│    name: "John Doe",                                         │
+│    age: 35,                                                  │
+│    email: "john@example.com"                                 │
+│  }                                                            │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Data Transformations
+
+```
+User Schema → JSON Schema → Tool Definition → Messages → AI Tool Call → Extracted Object
+      ↓
+  Validation (AJV for advanced mode)
+      ↓
+  Field name validation (simple mode)
+```
+
+### Key Prompts in Pipeline
+
+- **Default Extraction Prompt**: "Extract the following data from the provided data."
+- **Tool Description**: "Extract structured data from the provided content"
+- **User Prompt**: Customizable guide prompt (default or user-provided)
+
+---
+
