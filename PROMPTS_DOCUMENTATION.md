@@ -636,3 +636,280 @@ messages: [
 
 ---
 
+## Specialized AI Services
+
+### 12. Eden AI - Multi-Provider Text Generation
+
+**Location:** `packages/pieces/community/eden-ai/src/lib/actions/generate-text.ts`
+
+**Purpose:** Unified interface for accessing multiple AI providers (OpenAI, Anthropic, Google, Meta, Mistral, Cohere, XAI, Amazon, Microsoft, DeepSeek, Groq) through Eden AI's platform. Provides provider fallbacks and consistent API interface across different AI services.
+
+**Prompt Structure:**
+No fixed default prompt - users provide custom system and user prompts. The action constructs messages in this format:
+
+```typescript
+messages: [
+  // Optional system message
+  {
+    role: 'system',
+    content: [{ type: 'text', text: system_prompt }]
+  },
+  // User message with optional image
+  {
+    role: 'user',
+    content: [
+      { type: 'text', text: prompt },
+      // Optional for vision models
+      {
+        type: 'image_url',
+        image_url: { url: image_url }
+      }
+    ]
+  }
+]
+```
+
+**Supported Providers & Default Models:**
+- **OpenAI**: `gpt-4o`
+- **Anthropic Claude**: `claude-3-sonnet-latest`
+- **Google Gemini**: `gemini-2.0-flash`
+- **Meta Llama**: `llama-3.1-70b-instruct`
+- **Mistral**: `mistral-large-latest`
+- **Cohere**: `command-r-plus`
+- **XAI Grok**: `grok-2-latest`
+- **Amazon Nova**: `nova-pro-v1:0`
+- **Microsoft**: `gpt-4o`
+- **DeepSeek**: `deepseek-chat`
+- **Groq**: `llama-3.1-70b-versatile`
+
+**Features:**
+- Multi-provider support with automatic fallbacks
+- Vision capabilities (image + text prompts)
+- Consistent API across providers
+- Reasoning effort control (low/medium/high)
+- Custom model selection per provider
+
+**Parameters:**
+- `provider` - AI provider (Dropdown, Required)
+- `prompt` - Main user prompt (Long Text, Required)
+- `system_prompt` - Behavior/context instructions (Long Text, Optional)
+- `model` - Specific model override (Short Text, Optional, auto-selected if empty)
+- `temperature` - Creativity 0-2 (Number, Default: 0.7)
+- `max_completion_tokens` - Max response length (Number, Default: 1000)
+- `reasoning_effort` - Depth of reasoning: low/medium/high (Dropdown, Optional)
+- `fallback_providers` - Alternative providers (Multi-Select, Optional)
+- `include_image` - Enable vision mode (Checkbox, Default: false)
+- `image_url` - Image URL for analysis (Short Text, Optional)
+
+**Usage Example:**
+```typescript
+{
+  provider: "anthropic",
+  prompt: "Analyze this customer feedback and extract sentiment",
+  system_prompt: "You are a customer service analyst. Be objective and thorough.",
+  model: "claude-3-opus-latest",
+  temperature: 0.3,
+  fallback_providers: ["openai", "google"]
+}
+```
+
+**Usage Example (Vision):**
+```typescript
+{
+  provider: "openai",
+  prompt: "What products are visible in this shelf image?",
+  model: "gpt-4o",
+  include_image: true,
+  image_url: "https://example.com/shelf.jpg",
+  temperature: 0.2
+}
+```
+
+---
+
+## TextCortex AI Services
+
+TextCortex provides specialized AI writing tools with multi-language support, formality control, and various creative functions.
+
+### 13. TextCortex - Send Prompt (Text Completion)
+
+**Location:** `packages/pieces/community/textcortex-ai/src/lib/actions/send-prompt.ts`
+
+**Purpose:** General-purpose text completion using TextCortex AI. Given a starting text, the AI continues and completes it. Supports multiple models, formality levels, and language translation.
+
+**Prompt Structure:**
+No fixed system prompt - users provide starting text that AI completes:
+
+```typescript
+{
+  text: "The benefits of renewable energy are"
+}
+// AI completes: "...numerous and far-reaching. They include reduced carbon emissions..."
+```
+
+**Default Configuration:**
+- Model: `gemini-2-0-flash`
+- Formality: `default`
+- Source Language: `en` (English)
+- Target Language: `en` (English)
+- Max Tokens: `2048`
+- Number of Outputs: `1`
+
+**Features:**
+- Text completion from partial input
+- Multi-language support (source and target)
+- Formality control (default, formal, informal)
+- Multiple model options
+- Generate multiple variations (1-5 outputs)
+- Automatic language detection
+
+**Parameters:**
+- `text` - Starting text to complete (Long Text, Required)
+- `model` - AI model selection (Dropdown, Default: "gemini-2-0-flash")
+- `formality` - Output formality level (Dropdown, Default: "default")
+- `source_lang` - Input text language (Dropdown, Default: "en", supports auto-detect)
+- `target_lang` - Output language (Dropdown, Default: "en")
+- `max_tokens` - Maximum completion length (Number, Default: 2048, Range: 1-4096)
+- `temperature` - Creativity control (Number, Range: 0-2)
+- `n` - Number of completions (Number, Default: 1, Range: 1-5)
+
+**Usage Example:**
+```typescript
+{
+  text: "Dear valued customer, we are writing to inform you",
+  model: "gemini-2-0-flash",
+  formality: "formal",
+  target_lang: "en",
+  max_tokens: 500,
+  temperature: 0.5,
+  n: 3  // Generate 3 variations
+}
+```
+
+---
+
+### 14. TextCortex - Create Summary
+
+**Location:** `packages/pieces/community/textcortex-ai/src/lib/actions/create-summary.ts`
+
+**Purpose:** Condense long text or uploaded files into concise summaries. Supports two modes: default summarization and embeddings-based summarization for better semantic understanding.
+
+**Prompt Structure:**
+No explicit prompt - summarization is controlled by mode and parameters:
+
+```typescript
+{
+  text: "Long article text...",
+  mode: "default" | "embeddings"
+}
+```
+
+**Default Configuration:**
+- Mode: `default`
+- Model: `gemini-2-0-flash`
+- Formality: `default`
+- Source Language: `en`
+- Target Language: `en`
+- Max Tokens: `2048`
+- Number of Outputs: `1`
+
+**Summarization Modes:**
+1. **Default Mode** - Standard extractive/abstractive summarization
+2. **Embeddings Mode** - Uses semantic embeddings for better context understanding
+
+**Features:**
+- Text or file-based summarization
+- Multi-language input and output
+- Formality control for summary style
+- Multiple summary variations
+- Credit usage tracking
+
+**Parameters:**
+- `text` - Text to summarize (Long Text, Optional)
+- `file_id` - Alternative: File ID to summarize (Short Text, Optional)
+- `mode` - Summarization approach (Dropdown, Default: "default", Options: default/embeddings)
+- `model` - AI model (Dropdown, Default: "gemini-2-0-flash")
+- `formality` - Summary style (Dropdown, Default: "default")
+- `source_lang` - Input language (Dropdown, Default: "en")
+- `target_lang` - Summary language (Dropdown, Default: "en")
+- `max_tokens` - Maximum summary length (Number, Default: 2048)
+- `temperature` - Creativity (Number, Range: 0-2)
+- `n` - Number of summaries (Number, Default: 1, Range: 1-5)
+
+**Usage Example (Text):**
+```typescript
+{
+  text: "Very long research paper content...",
+  mode: "embeddings",  // Better semantic understanding
+  formality: "formal",
+  source_lang: "en",
+  target_lang: "es",  // Summarize in Spanish
+  max_tokens: 500,
+  temperature: 0.3
+}
+```
+
+**Usage Example (File):**
+```typescript
+{
+  file_id: "file_abc123",  // Previously uploaded file
+  mode: "default",
+  max_tokens: 1000,
+  n: 2  // Generate 2 summary variations
+}
+```
+
+---
+
+## Summary of All AI Prompts
+
+This application contains **14 major AI prompt categories** across different integration levels:
+
+### Agent System (1 prompt)
+1. **Agent Core System Prompt** - Autonomous task completion with tool usage directives
+
+### Universal AI Pieces (4 prompts)
+2. **Ask AI** - General conversational AI (no fixed prompt)
+3. **Summarize Text** - "Summarize the following text in a clear and concise manner..."
+4. **Classify Text** - "As a text classifier, your task is to assign one of the following categories..."
+5. **Extract Structured Data** - "Extract the following data from the provided data."
+
+### AI Provider Integrations (6 prompts)
+6. **OpenAI ChatGPT** - "You are a helpful assistant."
+7. **OpenAI Vision** - "You are a helpful assistant."
+8. **Anthropic Claude** - "You're a helpful assistant."
+9. **Perplexity AI** - "You are a helpful assistant."
+10. **LocalAI** - "You are a helpful assistant."
+
+### Specialized AI Services (3 prompt systems)
+11. **Eden AI** - Multi-provider (custom prompts, no defaults)
+12. **TextCortex Send Prompt** - Text completion (no fixed prompt)
+13. **TextCortex Create Summary** - Summarization (mode-based, no explicit prompt)
+
+### Common Patterns
+
+**Most Common Default System Prompt:**
+```
+"You are a helpful assistant."
+```
+
+Used by: OpenAI ChatGPT, OpenAI Vision, Perplexity AI, LocalAI
+
+**Anthropic Variant:**
+```
+"You're a helpful assistant."
+```
+
+**Agent-Specific Prompt Pattern:**
+```
+"You are an autonomous assistant designed to efficiently accomplish the user's goal."
++ Core directives + Current date/time
+```
+
+**Task-Specific Prompts:**
+- Classification: Instructs AI to respond with only category names
+- Summarization: Guides toward concise, informative summaries
+- Extraction: Directs AI to extract specific structured data
+
+---
+
